@@ -1,0 +1,8 @@
+mediapipe==0.10.14
+opencv-python
+numpy<2
+gradio>=4,<5
+huggingface_hub<1.0
+fastapi==0.112.2
+pydantic==2.8.2
+imageio-ffmpeg

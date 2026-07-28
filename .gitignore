@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 生成的应用（由 build_app.sh 生成）
+PoseExtractor.app
+
+# 处理输出
+outputs/
+*.tmp.mp4
