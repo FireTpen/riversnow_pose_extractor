@@ -4,6 +4,12 @@
 
 把人物舞蹈/动作视频转换为「纯黑底骨架视频」（ControlNet OpenPose 风格，可用于 AI 视频生成）+ 原始关键点 JSON 数据。姿态引擎为 MediaPipe Pose（33 个关键点），引擎已封装为独立模块（`src/pose_engine.py`），以后可扩展 DWPose。
 
+## 下载安装（DMG 安装包）
+
+可直接使用预构建的独立安装包 `dist/PoseExtractor.dmg`（构建方法见 `packaging/README.md`）：打开 DMG，把 `PoseExtractor.app` 拖进「应用程序」即可。应用内置 Python 解释器和全部依赖，目标机器零依赖（仅支持 Apple Silicon / arm64）。
+
+应用为 ad-hoc 签名（未公证），首次打开需**右键 → 打开**并确认，以绕过 Gatekeeper。
+
 ## 环境要求
 
 - macOS（Apple Silicon 已验证）

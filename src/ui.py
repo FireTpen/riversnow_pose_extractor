@@ -229,7 +229,9 @@ JS_FULL = "() => { const v = document.querySelector('#output_video video'); if (
 
 
 def build_ui():
-    with gr.Blocks(title="PoseExtractor", css=CUSTOM_CSS) as demo:
+    # analytics_enabled=False：关闭遥测。否则 gradio 会往自身包目录写 launches.json，
+    # PyInstaller 打包后这会破坏已签名 .app 的 seal（codesign 校验失败）。
+    with gr.Blocks(title="PoseExtractor", css=CUSTOM_CSS, analytics_enabled=False) as demo:
         lang_state = gr.State(DEFAULT_LANG)
         video_info = gr.State(None)
 

@@ -9,6 +9,12 @@ __pycache__/
 # 生成的应用（由 build_app.sh 生成）
 PoseExtractor.app
 
+# PyInstaller 打包产物
+build/
+dist/
+*.dmg
+*.spec
+
 # 处理输出
 outputs/
 *.tmp.mp4
