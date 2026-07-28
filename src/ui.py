@@ -5,7 +5,7 @@ import tempfile
 
 import gradio as gr
 
-from .pipeline import probe_video, process_video
+from .pipeline import probe_video, process_video, ensure_browser_playable
 
 # ---------------------------------------------------------------------------
 # i18n 文案表
@@ -37,6 +37,7 @@ TEXT = {
         "info_fmt": "分辨率: {width}x{height}　|　帧率: {fps:.2f} fps　|　"
                     "时长: {duration_sec:.2f} 秒　|　总帧数: {frame_count}",
         "read_fail": "读取视频失败: %s",
+        "note_transcoded": "\n\nℹ️ 源视频编码（如 HEVC）浏览器无法直接预览，已自动转换为 H.264。",
         "err_no_video": "请先上传视频。",
         "err_custom_empty": "自定义分辨率不能为空。",
         "err_custom_positive": "自定义分辨率必须为正整数。",
@@ -75,6 +76,7 @@ TEXT = {
         "info_fmt": "Resolution: {width}x{height}  |  FPS: {fps:.2f}  |  "
                     "Duration: {duration_sec:.2f} s  |  Frames: {frame_count}",
         "read_fail": "Failed to read video: %s",
+        "note_transcoded": "\n\nℹ️ Source codec (e.g. HEVC) is not browser-playable; auto-converted to H.264.",
         "err_no_video": "Please upload a video first.",
         "err_custom_empty": "Custom resolution must not be empty.",
         "err_custom_positive": "Custom resolution must be positive integers.",
@@ -125,17 +127,6 @@ def preset_choices(lang):
 
 def _fmt_info(info, lang):
     return T(lang, "info_fmt").format(**info)
-
-
-def on_upload(video_path, lang):
-    """上传/更换视频后：读取源信息并刷新提示。"""
-    if not video_path:
-        return "", gr.update(), gr.update()
-    try:
-        info = probe_video(video_path)
-    except Exception as e:
-        return T(lang, "read_fail", e), gr.update(), gr.update()
-    return _fmt_info(info, lang), info["duration_sec"], info
 
 
 def compute_warnings(video_info, preset, cust_w, cust_h, start_sec, end_sec, lang):
@@ -323,17 +314,24 @@ def build_ui():
         preset.change(on_preset_change, preset, cust_row)
 
         def refresh(video_path, info, p, cw, ch, s, e, lang):
-            info_text, dur, info = on_upload(video_path, lang)
-            if info:
-                e_val = 0
-                warn = compute_warnings(info, p, cw, ch, s, e_val, lang)
-                return info_text, info, warn
-            return info_text, None, ""
+            if not video_path:
+                return "", None, "", gr.update()
+            try:
+                # HEVC 等浏览器播不了的编码 -> 转成 H.264 副本，预览和处理都用它
+                play_path, converted = ensure_browser_playable(video_path)
+                info = probe_video(play_path)
+            except Exception as ex:
+                return T(lang, "read_fail", ex), None, "", gr.update()
+            info_text = _fmt_info(info, lang)
+            if converted:
+                info_text += T(lang, "note_transcoded")
+            warn = compute_warnings(info, p, cw, ch, s, 0, lang)
+            return info_text, info, warn, gr.update(value=play_path)
 
         video_in.change(refresh,
                         [video_in, video_info, preset, cust_w, cust_h,
                          start_sec, end_sec, lang_state],
-                        [info_md, video_info, warn_md])
+                        [info_md, video_info, warn_md, video_in])
 
         warn_inputs = [video_info, preset, cust_w, cust_h, start_sec, end_sec, lang_state]
         for comp in (preset, cust_w, cust_h, start_sec, end_sec):

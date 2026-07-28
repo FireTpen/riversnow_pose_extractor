@@ -2,12 +2,41 @@
 """视频处理流水线：读取/裁剪/缩放/逐帧姿态提取/写 mp4 + json。"""
 import json
 import os
+import re
 import subprocess
 
 import cv2
 import numpy as np
 
 from .pose_engine import create_engine
+
+
+def get_video_codec(video_path):
+    """返回视频编码名（小写，如 h264/hevc），探测失败返回 None。"""
+    import imageio_ffmpeg
+    exe = imageio_ffmpeg.get_ffmpeg_exe()
+    err = subprocess.run([exe, "-i", video_path],
+                         capture_output=True, text=True).stderr
+    m = re.search(r"Video:\s*([a-z0-9]+)", err, re.I)
+    return m.group(1).lower() if m else None
+
+
+def ensure_browser_playable(video_path):
+    """确保视频能被浏览器播放（用于预览）。
+
+    返回 (路径, 是否做了转换)。H.264/VP8/VP9/AV1 且容器合适时原样返回；
+    否则（如 iPhone 录屏的 HEVC .mov）转码为 H.264 mp4 副本——
+    转码时 ffmpeg 会自动应用旋转元数据，副本方向也被归一化。
+    副本写在上传文件所在目录（Gradio 上传缓存目录，/file= 路由可服务）。
+    """
+    codec = get_video_codec(video_path)
+    ext = os.path.splitext(video_path)[1].lower()
+    if codec in ("h264", "vp8", "vp9", "av1") and ext in (".mp4", ".m4v", ".webm"):
+        return video_path, False
+    base = os.path.splitext(os.path.basename(video_path))[0]
+    dst = os.path.join(os.path.dirname(video_path), base + "_h264.mp4")
+    _transcode_to_h264(video_path, dst)
+    return dst, True
 
 
 def _transcode_to_h264(src_path, dst_path):
