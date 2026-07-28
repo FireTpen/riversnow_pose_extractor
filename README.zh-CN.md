@@ -6,7 +6,7 @@
 
 ## 下载安装（DMG 安装包）
 
-可直接使用预构建的独立安装包 `dist/PoseExtractor.dmg`（构建方法见 `packaging/README.md`）：打开 DMG，把 `PoseExtractor.app` 拖进「应用程序」即可。应用内置 Python 解释器和全部依赖，目标机器零依赖（仅支持 Apple Silicon / arm64）。
+从 [**GitHub Releases**](https://github.com/FireTpen/riversnow_pose_extractor/releases) 下载最新的 `PoseExtractor.dmg`：打开 DMG，把 `PoseExtractor.app` 拖进「应用程序」即可。应用内置 Python 解释器和全部依赖，目标机器零依赖（仅支持 Apple Silicon / arm64）。自行构建见 `packaging/README.md`。
 
 应用为 ad-hoc 签名（未公证），首次打开需**右键 → 打开**并确认，以绕过 Gatekeeper。
 

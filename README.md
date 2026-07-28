@@ -8,7 +8,7 @@ Runs locally on macOS with a Gradio web UI (Chinese/English, switchable in the t
 
 ## Download (DMG installer)
 
-A prebuilt standalone installer may be provided as `dist/PoseExtractor.dmg` (see `packaging/README.md` for how it is built). Open the DMG and drag `PoseExtractor.app` into **Applications**. The app bundles its own Python and all dependencies — nothing else is required (Apple Silicon / arm64 only).
+Download the latest `PoseExtractor.dmg` from [**GitHub Releases**](https://github.com/FireTpen/riversnow_pose_extractor/releases). Open the DMG and drag `PoseExtractor.app` into **Applications**. The app bundles its own Python and all dependencies — nothing else is required (Apple Silicon / arm64 only). To build it yourself, see `packaging/README.md`.
 
 The app is ad-hoc signed (not notarized), so on first launch **right-click → Open** and confirm to bypass Gatekeeper.
 
