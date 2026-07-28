@@ -19,18 +19,33 @@ def _transcode_to_h264(src_path, dst_path):
            "-crf", "18", "-movflags", "+faststart", dst_path]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
-        raise RuntimeError("H.264 转码失败: %s" % (proc.stderr or "")[-500:])
+        raise RuntimeError("H.264 transcode failed: %s" % (proc.stderr or "")[-500:])
+
+
+def _open_capture(video_path):
+    """打开视频并启用自动旋转（手机视频常带 rotate=90 元数据，不处理会把横屏读成竖屏）。"""
+    cap = cv2.VideoCapture(video_path)
+    if cap.isOpened():
+        # OpenCV >= 4.5 支持；不支持的版本静默忽略
+        cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
+    return cap
 
 
 def probe_video(video_path):
     """返回源视频信息 dict: width, height, fps, frame_count, duration_sec。"""
-    cap = cv2.VideoCapture(video_path)
+    cap = _open_capture(video_path)
     if not cap.isOpened():
-        raise ValueError("无法打开视频文件: %s" % video_path)
+        raise ValueError("Cannot open video file: %s" % video_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    # 读一帧取真实画面尺寸（CAP_PROP_FRAME_WIDTH/HEIGHT 不含旋转修正，不可靠）
+    ok, frame = cap.read()
+    if not ok:
+        cap.release()
+        raise ValueError("No readable frames in video: %s" % video_path)
+    h, w = frame.shape[:2]
     info = {
-        "width": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-        "height": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+        "width": w,
+        "height": h,
         "fps": float(fps),
         "frame_count": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
         "duration_sec": float(cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps),
@@ -64,18 +79,19 @@ def process_video(video_path, out_video_path, out_json_path,
     end_sec = duration if end_sec in (None, "", 0) else min(float(end_sec), duration)
     if end_sec <= start_sec:
         raise ValueError(
-            "裁剪区间非法：结束时间(%.2fs)必须大于开始时间(%.2fs)，且不超过视频总长(%.2fs)"
+            "Invalid clip range: end (%.2fs) must be greater than start (%.2fs) "
+            "and within duration (%.2fs)"
             % (end_sec, start_sec, duration))
 
     start_frame = int(round(start_sec * fps))
     end_frame = min(int(round(end_sec * fps)), info["frame_count"])
     total_frames = max(0, end_frame - start_frame)
     if total_frames == 0:
-        raise ValueError("裁剪区间内没有可处理的帧。")
+        raise ValueError("No frames to process in the clip range.")
 
     engine = create_engine(engine_name, model_complexity=model_complexity)
 
-    cap = cv2.VideoCapture(video_path)
+    cap = _open_capture(video_path)
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
     # 先写 mp4v 临时文件，结束后转码 H.264（浏览器不支持 mp4v 预览）
     tmp_video_path = out_video_path + ".tmp.mp4"
@@ -84,7 +100,7 @@ def process_video(video_path, out_video_path, out_json_path,
     if not writer.isOpened():
         cap.release()
         engine.close()
-        raise RuntimeError("无法创建输出视频: %s" % tmp_video_path)
+        raise RuntimeError("Cannot create output video: %s" % tmp_video_path)
 
     frames_json = []
     detected = 0

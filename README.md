@@ -1,41 +1,43 @@
-# PoseExtractor 骨架提取工具
+# PoseExtractor
 
-把人物舞蹈/动作视频转换为「纯黑底骨架视频」（ControlNet OpenPose 风格，可用于 AI 视频生成）+ 原始关键点 JSON 数据。姿态引擎为 MediaPipe Pose（33 个关键点），引擎已封装为独立模块（`src/pose_engine.py`），以后可扩展 DWPose。
+**English** | **[中文](README.zh-CN.md)**
 
-## 环境要求
+Convert a dance/motion video of a person into a **black-background skeleton video** (ControlNet OpenPose style, ready for AI video generation) plus the **raw keypoints JSON**. The pose engine is MediaPipe Pose (33 landmarks), wrapped as a standalone module (`src/pose_engine.py`) so other engines (e.g. DWPose) can be added later.
 
-- macOS（Apple Silicon 已验证）
-- 系统 Python 3.9+（/usr/bin/python3），无需 Homebrew Python
+Runs locally on macOS with a Gradio web UI (Chinese/English, switchable in the top-right corner).
 
-## 安装
+## Requirements
+
+- macOS (verified on Apple Silicon / arm64)
+- System Python 3.9+ (`/usr/bin/python3`); no Homebrew Python needed
+
+## Installation
 
 ```bash
-cd /Users/fengjiahao/mycode_project/riversnow/pose_extractor
+cd pose_extractor
 /usr/bin/python3 -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
 ```
 
-## 启动
+## Usage
 
-- 命令行：`./run_app.sh`
-- Mac 应用：先运行 `./build_app.sh` 生成 `PoseExtractor.app`，双击即可（自动打开浏览器）。
+- CLI: `./run_app.sh`
+- Mac app: run `./build_app.sh` to generate `PoseExtractor.app`, then double-click it (opens the browser automatically).
 
-启动后访问 http://127.0.0.1:7860
+Then open http://127.0.0.1:7860
 
-## 用法
+1. Upload a video (mp4/mov etc.); the UI shows source resolution / FPS / duration.
+2. Adjust parameters:
+   - Output resolution: same as source by default, or 512x512 / 768x768 / 1024x1024 / custom width & height.
+   - Time clip: start/end seconds (end = 0 means full length).
+   - model_complexity: 0/1/2 — higher is more accurate but slower.
+3. The warning area dynamically flags upscaling beyond source resolution, total pixels above 1024x1024, and clips longer than 60 s (with an estimated frame count); an invalid clip range raises an error and blocks processing.
+4. Click "Start Processing". When done, preview the skeleton video and download the JSON. The preview is shown as a thumbnail by default; use the Thumbnail / Wide / Fullscreen buttons to resize it.
 
-1. 上传视频（mp4/mov 等），界面显示源视频分辨率/帧率/时长。
-2. 调整参数：
-   - 输出分辨率：默认与源一致，可选 512x512 / 768x768 / 1024x1024 或自定义宽高。
-   - 时长裁剪：起止秒（结束秒填 0 表示全长）。
-   - model_complexity：0/1/2，越大越准越慢。
-3. 风险提示区会动态提示：分辨率放大、总像素超 1024x1024、时长超 60 秒（附预计帧数）；裁剪区间非法会报错并阻止处理。
-4. 点击「开始处理」，完成后预览骨架视频并下载 JSON。
+## Output
 
-## 输出说明
-
-- **骨架视频 mp4**：纯黑底，彩色骨架连线（MediaPipe POSE_CONNECTIONS）+ 白色关节点，不叠加原画面。
-- **关键点 JSON**：
+- **Skeleton video (mp4)**: pure black background, colored skeleton connections (MediaPipe POSE_CONNECTIONS) and white joint dots; the original frame is not composited.
+- **Keypoints JSON**:
 
 ```json
 {
@@ -47,16 +49,21 @@ cd /Users/fengjiahao/mycode_project/riversnow/pose_extractor
     {
       "frame_index": 0,
       "time_sec": 0.0,
-      "landmarks": [{"x": 0.5, "y": 0.3, "z": 0.0, "visibility": 0.99}]  // 33 个；未检出人体时为 null
+      "landmarks": [{"x": 0.5, "y": 0.3, "z": 0.0, "visibility": 0.99}]  // 33 entries; null when no person detected
     }
   ]
 }
 ```
 
-坐标为归一化值（0~1，相对于输出分辨率）。
+Coordinates are normalized (0–1, relative to the output resolution).
 
-## 已知限制
+## Known Limitations
 
-- MediaPipe Pose 对快速舞蹈动作、遮挡、宽松衣物可能丢点或抖动（对应帧 landmarks 为 null 或关键点跳变）。
-- model_complexity=2 在 1080p 长视频上处理较慢，建议先裁剪片段试跑。
-- 输出 mp4 使用 mp4v 编码，体积偏大；如需 H.264/H.265 可后期用 ffmpeg 转码。
+- MediaPipe Pose may drop landmarks or jitter on fast dance moves, occlusion, or loose clothing (affected frames have `landmarks: null` or jumping keypoints).
+- model_complexity=2 is slow on long 1080p videos — clip a short segment first to test.
+- The output mp4 is H.264 (transcoded via imageio-ffmpeg); transcode with ffmpeg afterwards if you need H.265.
+- Building/running requires the arm64 architecture (Apple Silicon); Intel Macs are untested.
+
+## License
+
+See [LICENSE](LICENSE).
