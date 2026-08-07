@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""视频处理流水线：读取/裁剪/缩放/逐帧姿态提取/写 mp4 + json。"""
+"""视频处理流水线：读取/裁剪/缩放/逐帧身体与手部提取/写 mp4 + json。"""
 import json
 import os
 import re
@@ -166,6 +166,11 @@ def process_video(video_path, out_video_path, out_json_path,
             os.remove(tmp_video_path)
 
     data = {
+        "landmark_format": {
+            "pose": 33,
+            "left_hand": 21,
+            "right_hand": 21,
+        },
         "fps": fps,
         "width": out_width,
         "height": out_height,

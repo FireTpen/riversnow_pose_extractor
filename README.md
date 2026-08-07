@@ -2,7 +2,7 @@
 
 **English** | **[中文](README.zh-CN.md)**
 
-Convert a dance/motion video of a person into a **black-background skeleton video** (ControlNet OpenPose style, ready for AI video generation) plus the **raw keypoints JSON**. The pose engine is MediaPipe Pose (33 landmarks), wrapped as a standalone module (`src/pose_engine.py`) so other engines (e.g. DWPose) can be added later.
+Convert a dance/motion video of a person into a **black-background skeleton video** (ControlNet OpenPose style, ready for AI video generation) plus the **raw keypoints JSON**. The engine combines MediaPipe Pose (33 body landmarks) and Hands (21 finger landmarks per hand), wrapped as a standalone module (`src/pose_engine.py`) so other engines (e.g. DWPose) can be added later.
 
 Runs locally on macOS with a Gradio web UI (Chinese/English, switchable in the top-right corner).
 
@@ -47,6 +47,7 @@ Then open http://127.0.0.1:7860
 
 ```json
 {
+  "landmark_format": {"pose": 33, "left_hand": 21, "right_hand": 21},
   "fps": 30.0,
   "width": 512,
   "height": 512,
@@ -55,17 +56,21 @@ Then open http://127.0.0.1:7860
     {
       "frame_index": 0,
       "time_sec": 0.0,
-      "landmarks": [{"x": 0.5, "y": 0.3, "z": 0.0, "visibility": 0.99}]  // 33 entries; null when no person detected
+      "landmarks": {
+        "pose": [{"x": 0.5, "y": 0.3, "z": 0.0, "visibility": 0.99}],
+        "left_hand": [{"x": 0.5, "y": 0.3, "z": 0.0, "visibility": 1.0}],
+        "right_hand": null
+      }
     }
   ]
 }
 ```
 
-Coordinates are normalized (0–1, relative to the output resolution).
+Coordinates are normalized (0–1, relative to the output resolution). `pose` has 33 body points and each hand contains 21 points; an undetected hand is `null`, as is `landmarks` if no body or hand is detected.
 
 ## Known Limitations
 
-- MediaPipe Pose may drop landmarks or jitter on fast dance moves, occlusion, or loose clothing (affected frames have `landmarks: null` or jumping keypoints).
+- Hand tracking may drop or jitter when hands are small, motion-blurred, occluded, or fingers overlap. Keep hands sharp and relatively large in frame for best finger motion capture.
 - model_complexity=2 is slow on long 1080p videos — clip a short segment first to test.
 - The output mp4 is H.264 (transcoded via imageio-ffmpeg); transcode with ffmpeg afterwards if you need H.265.
 - Building/running requires the arm64 architecture (Apple Silicon); Intel Macs are untested.

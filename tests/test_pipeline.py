@@ -47,6 +47,7 @@ with open(out_j) as f:
     data = json.load(f)
 assert data["width"] == 320 and data["height"] == 320
 assert data["fps"] == fps
+assert data["landmark_format"] == {"pose": 33, "left_hand": 21, "right_hand": 21}
 assert data["frame_count"] == 20
 assert len(data["frames"]) == 20
 assert data["frames"][0]["frame_index"] == 10  # 0.5s * 20fps

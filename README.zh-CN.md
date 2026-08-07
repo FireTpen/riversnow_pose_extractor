@@ -2,7 +2,7 @@
 
 **[English](README.md)** | **中文**
 
-把人物舞蹈/动作视频转换为「纯黑底骨架视频」（ControlNet OpenPose 风格，可用于 AI 视频生成）+ 原始关键点 JSON 数据。姿态引擎为 MediaPipe Pose（33 个关键点），引擎已封装为独立模块（`src/pose_engine.py`），以后可扩展 DWPose。
+把人物舞蹈/动作视频转换为「纯黑底骨架视频」（ControlNet OpenPose 风格，可用于 AI 视频生成）+ 原始关键点 JSON 数据。姿态引擎使用 MediaPipe Pose（33 个身体关键点）+ Hands（每只手 21 个手指关键点）；引擎已封装为独立模块（`src/pose_engine.py`），以后可扩展 DWPose。
 
 ## 下载安装（DMG 安装包）
 
@@ -44,11 +44,12 @@ cd /Users/fengjiahao/mycode_project/riversnow/pose_extractor
 
 ## 输出说明
 
-- **骨架视频 mp4**：纯黑底，彩色骨架连线（MediaPipe POSE_CONNECTIONS）+ 白色关节点，不叠加原画面。
+- **骨架视频 mp4**：纯黑底，身体骨架加上双手的完整手指连线，不叠加原画面。
 - **关键点 JSON**：
 
 ```json
 {
+  "landmark_format": {"pose": 33, "left_hand": 21, "right_hand": 21},
   "fps": 30.0,
   "width": 512,
   "height": 512,
@@ -57,17 +58,21 @@ cd /Users/fengjiahao/mycode_project/riversnow/pose_extractor
     {
       "frame_index": 0,
       "time_sec": 0.0,
-      "landmarks": [{"x": 0.5, "y": 0.3, "z": 0.0, "visibility": 0.99}]  // 33 个；未检出人体时为 null
+      "landmarks": {
+        "pose": [{"x": 0.5, "y": 0.3, "z": 0.0, "visibility": 0.99}], // 33 个或 null
+        "left_hand": [{"x": 0.5, "y": 0.3, "z": 0.0, "visibility": 1.0}], // 21 个或 null
+        "right_hand": null
+      }
     }
   ]
 }
 ```
 
-坐标为归一化值（0~1，相对于输出分辨率）。
+坐标为归一化值（0~1，相对于输出分辨率）。`pose` 是身体 33 点，`left_hand` 和 `right_hand` 各为完整手部 21 点；某只手未识别到时为 `null`。三组均未识别到时，整帧 `landmarks` 为 `null`。
 
 ## 已知限制
 
-- MediaPipe Pose 对快速舞蹈动作、遮挡、宽松衣物可能丢点或抖动（对应帧 landmarks 为 null 或关键点跳变）。
+- 手部在画面中太小、运动模糊、被遮挡或手指相互重叠时，Hands 可能丢失该手或产生抖动；请让手部清晰、尽量占画面较大区域。
 - model_complexity=2 在 1080p 长视频上处理较慢，建议先裁剪片段试跑。
 - 输出 mp4 使用 H.264 编码（imageio-ffmpeg 转码）；如需 H.265 可后期用 ffmpeg 再转码。
 - 打包/运行需 arm64 架构（Apple Silicon）；Intel Mac 未经测试。

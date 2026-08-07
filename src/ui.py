@@ -5,8 +5,6 @@ import tempfile
 
 import gradio as gr
 
-from .pipeline import probe_video, process_video, ensure_browser_playable
-
 # ---------------------------------------------------------------------------
 # i18n 文案表
 # ---------------------------------------------------------------------------
@@ -16,7 +14,8 @@ DEFAULT_LANG = "zh"
 TEXT = {
     "zh": {
         "title_md": "# 人物动作视频 → 黑底骨架视频 + 关键点 JSON\n"
-                    "使用 MediaPipe Pose（33 关键点），适用于 AI 视频生成（ControlNet OpenPose 风格）。",
+                    "使用 MediaPipe Pose（33 个身体关键点）+ Hands（每只手 21 个手指关键点），"
+                    "适用于 AI 视频生成（ControlNet OpenPose 风格）。",
         "video_in_label": "上传视频（mp4/mov 等）",
         "info_placeholder": "上传后显示源视频信息",
         "params_md": "### 参数",
@@ -48,14 +47,14 @@ TEXT = {
         "warn_long": "⚠️ 裁剪后时长 %.1f 秒，预计处理约 %d 帧，耗时较长，请耐心等待。",
         "info_frames": "ℹ️ 预计处理约 %d 帧（%.1f 秒）。",
         "progress_desc": "处理帧 %d/%d",
-        "summary_done": "✅ 完成：写出 %d 帧，其中 %d 帧检出人体姿态。",
+        "summary_done": "✅ 完成：写出 %d 帧，其中 %d 帧检出身体或手部关键点。",
         "summary_even": "（奇数宽/高已调整为偶数 %dx%d，以满足 H.264 编码要求）",
         "err_process_failed": "❌ 处理失败：%s",
     },
     "en": {
         "title_md": "# Motion Video → Black-Background Skeleton Video + Keypoints JSON\n"
-                    "Powered by MediaPipe Pose (33 landmarks). Designed for AI video generation "
-                    "(ControlNet OpenPose style).",
+                    "Powered by MediaPipe Pose (33 body landmarks) + Hands (21 finger landmarks "
+                    "per hand). Designed for AI video generation (ControlNet OpenPose style).",
         "video_in_label": "Upload video (mp4/mov etc.)",
         "info_placeholder": "Source video info will appear here after upload",
         "params_md": "### Parameters",
@@ -92,7 +91,7 @@ TEXT = {
                      "please be patient.",
         "info_frames": "ℹ️ About %d frames to process (%.1f s).",
         "progress_desc": "Frame %d/%d",
-        "summary_done": "✅ Done: wrote %d frames, pose detected in %d of them.",
+        "summary_done": "✅ Done: wrote %d frames; body or hand landmarks detected in %d of them.",
         "summary_even": " (odd width/height rounded to even %dx%d for H.264 encoding)",
         "err_process_failed": "❌ Processing failed: %s",
     },
@@ -165,6 +164,10 @@ def compute_warnings(video_info, preset, cust_w, cust_h, start_sec, end_sec, lan
 def run_process(video_path, video_info, preset, cust_w, cust_h,
                 start_sec, end_sec, model_complexity, lang,
                 progress=gr.Progress()):
+    # 延后加载 OpenCV / NumPy / MediaPipe；这些依赖只在真正开始处理时才需要，
+    # 不再拖慢应用窗口和网页首次打开。
+    from .pipeline import probe_video, process_video
+
     if not video_path:
         raise gr.Error(T(lang, "err_no_video"))
     if not video_info:
@@ -219,7 +222,11 @@ def run_process(video_path, video_info, preset, cust_w, cust_h,
 # 输出预览尺寸控制（缩略/宽屏/全屏）
 # ---------------------------------------------------------------------------
 CUSTOM_CSS = """
+#input_video { max-width: 480px !important; }
+#input_video .wrap { max-width: 480px !important; height: 320px !important; }
+#input_video video { width: 480px !important; height: 320px !important; object-fit: contain; }
 #output_video { max-width: 340px; }
+#output_video video { max-height: 360px; object-fit: contain; }
 #output_video.preview-wide { max-width: 100%; }
 """
 
@@ -244,7 +251,9 @@ def build_ui():
 
         with gr.Row():
             with gr.Column():
-                video_in = gr.Video(label=T("zh", "video_in_label"), sources=["upload"])
+                # 限制预览尺寸：不会改变上传文件或后续检测使用的原始分辨率。
+                video_in = gr.Video(label=T("zh", "video_in_label"), sources=["upload"],
+                                    width=480, height=320, elem_id="input_video")
                 info_md = gr.Markdown(T("zh", "info_placeholder"))
                 params_md = gr.Markdown(T("zh", "params_md"))
                 preset = gr.Radio(preset_choices("zh"), value="source",
@@ -319,6 +328,8 @@ def build_ui():
             if not video_path:
                 return "", None, "", gr.update()
             try:
+                # 同样延后导入视频处理依赖，让初始界面尽快可用。
+                from .pipeline import ensure_browser_playable, probe_video
                 # HEVC 等浏览器播不了的编码 -> 转成 H.264 副本，预览和处理都用它
                 play_path, converted = ensure_browser_playable(video_path)
                 info = probe_video(play_path)
