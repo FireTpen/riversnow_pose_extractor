@@ -168,9 +168,15 @@ def process_video(video_path, out_video_path, out_json_path,
     data = {
         "landmark_format": {
             "pose": 33,
+            "pose_world": 33,
             "left_hand": 21,
             "right_hand": 21,
+            "left_hand_world": 21,
+            "right_hand_world": 21,
         },
+        "world_landmarks_note": (
+            "MediaPipe estimated world coordinates in meters. Pose is hip-centered; "
+            "each hand is hand-centered and should be used for local finger rotations."),
         "fps": fps,
         "width": out_width,
         "height": out_height,

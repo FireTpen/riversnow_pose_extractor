@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
-"""PyInstaller 打包入口。
-
-冻结运行（python -m PyInstaller 产出的 .app）时没有控制台，
-把 stdout/stderr 追加到 ~/Library/Logs/PoseExtractor.log 便于排错。
-"""
+"""PyInstaller 打包入口（macOS / Windows）。"""
 import os
 import sys
 
 if getattr(sys, "frozen", False):
-    log_path = os.path.expanduser("~/Library/Logs/PoseExtractor.log")
+    if sys.platform == "darwin":
+        log_path = os.path.expanduser("~/Library/Logs/PoseExtractor.log")
+    elif os.name == "nt":
+        log_path = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
+                                "PoseExtractor", "PoseExtractor.log")
+    else:
+        log_path = os.path.expanduser("~/.local/state/PoseExtractor/PoseExtractor.log")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
     log_file = open(log_path, "a", buffering=1)
     sys.stdout = log_file
     sys.stderr = log_file

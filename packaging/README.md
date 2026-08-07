@@ -1,4 +1,11 @@
-# 打包独立安装包（PyInstaller + DMG）
+# 打包独立安装包（PyInstaller）
+
+当前目录包含两种原生构建脚本：
+
+- macOS（Apple Silicon）：`build_installer.sh`，产出 `.app` 和 `.dmg`。
+- Windows x64：`build_windows.ps1`，产出便携版 `.zip`。详见 [README.windows.md](README.windows.md)。
+
+> PyInstaller 不能可靠交叉构建：Windows `.exe` 必须在 Windows x64 机器上构建与测试，macOS `.app` 必须在 macOS 上构建。
 
 把应用打成**零依赖**的 `PoseExtractor.app`（内置 Python 解释器和全部依赖，仅 arm64），
 ad-hoc 签名后生成拖放式 DMG 安装包。

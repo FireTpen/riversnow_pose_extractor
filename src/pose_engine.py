@@ -4,7 +4,7 @@
 当前实现：MediaPipe Pose（33 个关键点）+ Hands（每只手 21 个关键点）。
 以后如需接入 DWPose 等引擎，实现同样的接口即可：
     - num_landmarks 属性
-    - detect(bgr_image) -> {"pose", "left_hand", "right_hand"} 或 None
+    - detect(bgr_image) -> 图像坐标和 world landmarks 字典或 None
     - draw(canvas, landmarks) -> 画好骨架的黑底图
     - close()
 landmark 元素为 dict: {"x", "y", "z", "visibility"}，坐标为归一化值。
@@ -81,13 +81,20 @@ class MediaPipePoseEngine:
 
         pose = (self._to_landmarks(pose_result.pose_landmarks.landmark)
                 if pose_result.pose_landmarks else None)
-        hands = {"left_hand": None, "right_hand": None}
+        pose_world = (self._to_landmarks(pose_result.pose_world_landmarks.landmark)
+                      if pose_result.pose_world_landmarks else None)
+        hands = {
+            "left_hand": None,
+            "right_hand": None,
+            "left_hand_world": None,
+            "right_hand_world": None,
+        }
         if hands_result.multi_hand_landmarks:
             # multi_handedness 与 multi_hand_landmarks 一一对应；正常情况下每侧
             # 最多一只手。
-            for hand_lms, handedness in zip(
+            for hand_index, (hand_lms, handedness) in enumerate(zip(
                     hands_result.multi_hand_landmarks,
-                    hands_result.multi_handedness or []):
+                    hands_result.multi_handedness or [])):
                 label = handedness.classification[0].label.lower()
                 key = "%s_hand" % label
                 if key in hands:
@@ -95,10 +102,15 @@ class MediaPipePoseEngine:
                     # 模型检出，21 个关节应全部参与绘制。
                     hands[key] = self._to_landmarks(hand_lms.landmark,
                                                      use_landmark_visibility=False)
+                    world_key = "%s_world" % key
+                    if hands_result.multi_hand_world_landmarks:
+                        hands[world_key] = self._to_landmarks(
+                            hands_result.multi_hand_world_landmarks[hand_index].landmark,
+                            use_landmark_visibility=False)
 
         if pose is None and not any(hands.values()):
             return None
-        return {"pose": pose, **hands}
+        return {"pose": pose, "pose_world": pose_world, **hands}
 
     def draw(self, canvas, landmarks):
         """在 canvas（应为黑底图）上画骨架连线和关节点，返回 canvas。"""

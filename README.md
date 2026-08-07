@@ -4,7 +4,13 @@
 
 Convert a dance/motion video of a person into a **black-background skeleton video** (ControlNet OpenPose style, ready for AI video generation) plus the **raw keypoints JSON**. The engine combines MediaPipe Pose (33 body landmarks) and Hands (21 finger landmarks per hand), wrapped as a standalone module (`src/pose_engine.py`) so other engines (e.g. DWPose) can be added later.
 
-Runs locally on macOS with a Gradio web UI (Chinese/English, switchable in the top-right corner).
+> Experimental: after processing, export the keypoints JSON as an **animation-only FBX**. The exporter solves a Mixamo-style named armature from body/hand world landmarks; retarget the animation to your character in Unity, Unreal, or Blender.
+
+Runs locally with a Gradio web UI (Chinese/English, switchable in the top-right corner).
+
+## Windows x64
+
+The project includes a native Windows packaging script. On Windows 10/11 with Python 3.10 or 3.11, run `packaging\\build_windows.ps1`; see [packaging/README.windows.md](packaging/README.windows.md) for the complete build and validation process. FBX export on Windows requires a separate Blender installation; the app discovers its default installation path, or you can set `BLENDER_BIN`.
 
 ## Download (DMG installer)
 

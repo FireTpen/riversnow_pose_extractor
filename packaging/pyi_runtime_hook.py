@@ -10,12 +10,14 @@ cv2.abi3.so 装进 sys.modules['cv2']，绕开 bootstrap。
 import importlib.util
 import os
 import sys
+from glob import glob
 
 if getattr(sys, "frozen", False):
     _cv2_dir = os.path.join(sys._MEIPASS, "cv2")
-    _so = os.path.join(_cv2_dir, "cv2.abi3.so")
-    if os.path.exists(_so):
-        _spec = importlib.util.spec_from_file_location("cv2", _so)
+    # macOS: cv2.abi3.so；Windows: cv2.pyd（名称随 wheel 版本变化）。
+    _extensions = glob(os.path.join(_cv2_dir, "cv2*.so")) + glob(os.path.join(_cv2_dir, "cv2*.pyd"))
+    if _extensions:
+        _spec = importlib.util.spec_from_file_location("cv2", _extensions[0])
         _mod = importlib.util.module_from_spec(_spec)
         sys.modules["cv2"] = _mod
         _spec.loader.exec_module(_mod)

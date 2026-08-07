@@ -30,6 +30,8 @@ TEXT = {
         "btn_label": "开始处理",
         "video_out_label": "骨架视频预览",
         "json_out_label": "关键点 JSON 下载",
+        "fbx_btn_label": "导出 FBX 动画（实验）",
+        "fbx_out_label": "FBX 动画下载",
         "thumb_btn": "缩略",
         "wide_btn": "宽屏",
         "full_btn": "全屏",
@@ -50,6 +52,10 @@ TEXT = {
         "summary_done": "✅ 完成：写出 %d 帧，其中 %d 帧检出身体或手部关键点。",
         "summary_even": "（奇数宽/高已调整为偶数 %dx%d，以满足 H.264 编码要求）",
         "err_process_failed": "❌ 处理失败：%s",
+        "err_no_json": "请先完成视频处理，生成关键点 JSON。",
+        "fbx_exporting": "正在用 Blender 解算骨骼并导出 FBX…",
+        "fbx_done": "✅ FBX 动画已导出（Mixamo 命名风格骨架，建议在游戏引擎中重定向）。",
+        "err_fbx_failed": "❌ FBX 导出失败：%s",
     },
     "en": {
         "title_md": "# Motion Video → Black-Background Skeleton Video + Keypoints JSON\n"
@@ -69,6 +75,8 @@ TEXT = {
         "btn_label": "Start Processing",
         "video_out_label": "Skeleton video preview",
         "json_out_label": "Keypoints JSON download",
+        "fbx_btn_label": "Export FBX Animation (Experimental)",
+        "fbx_out_label": "FBX animation download",
         "thumb_btn": "Thumbnail",
         "wide_btn": "Wide",
         "full_btn": "Fullscreen",
@@ -94,6 +102,10 @@ TEXT = {
         "summary_done": "✅ Done: wrote %d frames; body or hand landmarks detected in %d of them.",
         "summary_even": " (odd width/height rounded to even %dx%d for H.264 encoding)",
         "err_process_failed": "❌ Processing failed: %s",
+        "err_no_json": "Process a video first to generate a keypoints JSON file.",
+        "fbx_exporting": "Solving the skeleton and exporting FBX with Blender…",
+        "fbx_done": "✅ FBX animation exported (Mixamo-style bone names; retarget in your engine).",
+        "err_fbx_failed": "❌ FBX export failed: %s",
     },
 }
 
@@ -218,6 +230,22 @@ def run_process(video_path, video_info, preset, cust_w, cust_h,
     return result["out_video"], result["out_json"], summary
 
 
+def run_export_fbx(keypoints_path, lang, progress=gr.Progress()):
+    """从已生成的 world-landmarks JSON 导出 animation-only FBX。"""
+    if not keypoints_path:
+        raise gr.Error(T(lang, "err_no_json"))
+    from .fbx_export import export_fbx
+
+    progress(0.1, desc=T(lang, "fbx_exporting"))
+    out_fbx = os.path.join(os.path.dirname(keypoints_path), "animation.fbx")
+    try:
+        export_fbx(keypoints_path, out_fbx, root_motion=False)
+    except Exception as e:
+        raise gr.Error(T(lang, "err_fbx_failed", e))
+    progress(1.0, desc=T(lang, "fbx_done"))
+    return out_fbx, T(lang, "fbx_done")
+
+
 # ---------------------------------------------------------------------------
 # 输出预览尺寸控制（缩略/宽屏/全屏）
 # ---------------------------------------------------------------------------
@@ -276,6 +304,8 @@ def build_ui():
                     btn_wide = gr.Button(T("zh", "wide_btn"), size="sm")
                     btn_full = gr.Button(T("zh", "full_btn"), size="sm")
                 json_out = gr.File(label=T("zh", "json_out_label"))
+                btn_fbx = gr.Button(T("zh", "fbx_btn_label"))
+                fbx_out = gr.File(label=T("zh", "fbx_out_label"))
                 status_md = gr.Markdown("")
 
         # --- 语言切换 ---
@@ -300,6 +330,8 @@ def build_ui():
                 gr.update(value=T(lang, "wide_btn")),
                 gr.update(value=T(lang, "full_btn")),
                 gr.update(label=T(lang, "json_out_label")),
+                gr.update(value=T(lang, "fbx_btn_label")),
+                gr.update(label=T(lang, "fbx_out_label")),
                 gr.update(value=warn),
                 gr.update(value=""),
                 lang,
@@ -310,7 +342,8 @@ def build_ui():
             [lang_radio, video_info, preset, cust_w, cust_h, start_sec, end_sec],
             [title_md, video_in, info_md, params_md, preset, cust_w, cust_h,
              start_sec, end_sec, complexity, btn, video_out,
-             btn_thumb, btn_wide, btn_full, json_out, warn_md, status_md, lang_state],
+             btn_thumb, btn_wide, btn_full, json_out, btn_fbx, fbx_out,
+             warn_md, status_md, lang_state],
             api_name="switch_lang",
         )
 
@@ -355,4 +388,6 @@ def build_ui():
                    start_sec, end_sec, complexity, lang_state],
                   [video_out, json_out, status_md],
                   api_name="process")
+        btn_fbx.click(run_export_fbx, [json_out, lang_state], [fbx_out, status_md],
+                      api_name="export_fbx")
     return demo

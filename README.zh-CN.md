@@ -4,6 +4,12 @@
 
 把人物舞蹈/动作视频转换为「纯黑底骨架视频」（ControlNet OpenPose 风格，可用于 AI 视频生成）+ 原始关键点 JSON 数据。姿态引擎使用 MediaPipe Pose（33 个身体关键点）+ Hands（每只手 21 个手指关键点）；引擎已封装为独立模块（`src/pose_engine.py`），以后可扩展 DWPose。
 
+> 实验功能：处理完成后可将关键点 JSON 导出为 **animation-only FBX**。导出器使用身体/手部 world landmarks 解算 Mixamo 命名风格的骨架旋转；建议导入 Unity、Unreal 或 Blender 后重定向到你的角色骨架。
+
+## Windows 版本
+
+项目已提供 Windows x64 的原生构建脚本。请在 Windows 10/11、Python 3.10/3.11 环境执行 `packaging\\build_windows.ps1`；完整构建、测试和日志位置见 [packaging/README.windows.md](packaging/README.windows.md)。Windows 的 FBX 导出需单独安装 Blender，程序会自动搜索默认安装路径，也可设置 `BLENDER_BIN`。
+
 ## 下载安装（DMG 安装包）
 
 从 [**GitHub Releases**](https://github.com/FireTpen/riversnow_pose_extractor/releases) 下载最新的 `PoseExtractor.dmg`：打开 DMG，把 `PoseExtractor.app` 拖进「应用程序」即可。应用内置 Python 解释器和全部依赖，目标机器零依赖（仅支持 Apple Silicon / arm64）。自行构建见 `packaging/README.md`。
@@ -69,6 +75,16 @@ cd /Users/fengjiahao/mycode_project/riversnow/pose_extractor
 ```
 
 坐标为归一化值（0~1，相对于输出分辨率）。`pose` 是身体 33 点，`left_hand` 和 `right_hand` 各为完整手部 21 点；某只手未识别到时为 `null`。三组均未识别到时，整帧 `landmarks` 为 `null`。
+
+新版 JSON 还包含 `pose_world`、`left_hand_world`、`right_hand_world`：单位为米的 MediaPipe 估计世界坐标。身体坐标以髋部为中心；手部坐标以手自身为中心，因此 FBX 导出器将手部 world landmarks 仅用于局部手指旋转，并把手腕挂接到身体骨架。
+
+## FBX 导出
+
+1. 按正常流程处理视频，先生成关键点 JSON。
+2. 点击右侧的「导出 FBX 动画（实验）」。首次导出会启动本机 Blender，耗时略长。
+3. 下载 `animation.fbx`，在 Unity/Unreal/Blender 中重定向到目标角色。
+
+需要安装 Blender（macOS 默认查找 `/Applications/Blender.app`；也可设置 `BLENDER_BIN`）。该功能会做基础骨骼旋转解算，但单目视频无法保证真实根位移、遮挡处姿态或完全无脚滑；高质量成片仍建议后续编辑或使用双机位输入。
 
 ## 已知限制
 

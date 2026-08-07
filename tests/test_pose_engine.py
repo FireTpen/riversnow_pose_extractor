@@ -31,7 +31,8 @@ assert img is not None, "读图失败: %s" % img_path
 engine = create_engine("mediapipe", model_complexity=1)
 lms = engine.detect(img)
 assert lms is not None, "未检出人体姿态"
-assert set(lms) == {"pose", "left_hand", "right_hand"}
+assert set(lms) == {"pose", "pose_world", "left_hand", "right_hand",
+                    "left_hand_world", "right_hand_world"}
 assert lms["pose"] is not None and len(lms["pose"]) == 33, lms["pose"]
 for lm in lms["pose"]:
     assert set(lm.keys()) == {"x", "y", "z", "visibility"}
